@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /wishlist.html
 
-Sitemap: https://hermesss.ru/sitemap.xml
+Sitemap: https://shesaidmewakeup.github.io/pegasus-store/sitemap.xml

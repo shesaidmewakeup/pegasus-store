@@ -3,7 +3,7 @@ import json
 from datetime import date
 from xml.sax.saxutils import escape
 
-SITE = 'https://hermesss.ru'
+SITE = 'https://shesaidmewakeup.github.io/pegasus-store'
 TODAY = date.today().isoformat()
 
 STATIC = [
