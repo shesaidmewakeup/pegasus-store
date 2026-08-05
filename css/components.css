@@ -1,0 +1,433 @@
+/* ==========================================================================
+   Pegasus Store — Components
+   Модалки, каталог, фильтры, страница товара, тосты, 404.
+   ========================================================================== */
+
+/* --- Overlay: общая база для поиска и мобильного меню --------------------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: rgba(248, 246, 242, 0.97);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur) var(--ease), visibility var(--dur) var(--ease);
+}
+.overlay[data-open='true'] { opacity: 1; visibility: visible; }
+
+.overlay__close {
+  position: absolute;
+  top: var(--sp-4);
+  right: var(--sp-4);
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  transition: background var(--dur-fast) var(--ease);
+}
+.overlay__close:hover { background: var(--c-gold-soft); }
+.overlay__close svg { width: 22px; height: 22px; }
+
+/* --- Мобильное меню ------------------------------------------------------ */
+
+.mobile-menu__inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-16) var(--sp-6);
+  max-width: 480px;
+  margin-inline: auto;
+}
+.mobile-menu__link {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  padding-block: var(--sp-3);
+  border-bottom: 1px solid var(--c-line);
+  transition: color var(--dur-fast) var(--ease), padding-left var(--dur) var(--ease);
+}
+.mobile-menu__link:hover { color: var(--c-gold); padding-left: var(--sp-3); }
+
+/* --- Поиск --------------------------------------------------------------- */
+
+.search { overflow-y: auto; }
+.search__inner {
+  max-width: var(--container);
+  margin-inline: auto;
+  padding: clamp(var(--sp-16), 12vh, 140px) var(--sp-6) var(--sp-16);
+}
+.search__field { position: relative; border-bottom: 1px solid var(--c-ink); }
+.search__input {
+  width: 100%;
+  background: none;
+  border: none;
+  font-family: var(--font-display);
+  font-size: var(--fs-3xl);
+  padding: var(--sp-3) var(--sp-12) var(--sp-4) 0;
+}
+.search__input:focus { outline: none; }
+.search__input::placeholder { color: #c3bdb4; }
+.search__hint {
+  margin-top: var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--c-muted);
+}
+.search__results { margin-top: var(--sp-12); }
+.search__empty {
+  text-align: center;
+  padding-block: var(--sp-16);
+  color: var(--c-muted);
+}
+mark {
+  background: var(--c-gold-soft);
+  color: inherit;
+  padding-inline: 2px;
+}
+
+/* --- Каталог: раскладка --------------------------------------------------- */
+
+.catalog {
+  display: grid;
+  gap: var(--sp-8);
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .catalog { grid-template-columns: 240px 1fr; gap: var(--sp-16); }
+}
+
+.catalog__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-8);
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--c-line);
+}
+.catalog__count { font-size: var(--fs-sm); color: var(--c-muted); }
+
+/* --- Сайдбар фильтров ----------------------------------------------------- */
+
+.sidebar { display: grid; gap: var(--sp-8); }
+@media (min-width: 1024px) {
+  .sidebar { position: sticky; top: calc(var(--header-h) + var(--sp-6)); }
+}
+
+.filter-group__title {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+  margin-bottom: var(--sp-4);
+}
+.filter-list { display: grid; gap: var(--sp-1); }
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+  font-size: var(--fs-sm);
+  color: var(--c-ink-soft);
+  border-radius: var(--radius);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.filter-btn:hover { background: var(--c-gold-soft); color: var(--c-gold); }
+.filter-btn[aria-pressed='true'] {
+  background: var(--c-ink);
+  color: #fff;
+}
+.filter-btn__count { font-size: var(--fs-xs); opacity: 0.6; }
+
+.filter-check {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--c-ink-soft);
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background var(--dur-fast) var(--ease);
+}
+.filter-check:hover { background: var(--c-gold-soft); }
+.filter-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--c-gold);
+  cursor: pointer;
+}
+
+.filter-reset {
+  font-size: var(--fs-sm);
+  color: var(--c-gold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Чипы активных фильтров */
+.chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2) var(--sp-1) var(--sp-3);
+  background: var(--c-gold-soft);
+  color: var(--c-gold);
+  font-size: var(--fs-xs);
+  border-radius: 999px;
+}
+.chip button {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: inherit;
+  transition: background var(--dur-fast) var(--ease);
+}
+.chip button:hover { background: rgba(138, 109, 59, 0.18); }
+.chip svg { width: 12px; height: 12px; }
+
+/* --- Select --------------------------------------------------------------- */
+
+.select-wrap { position: relative; display: inline-flex; align-items: center; }
+.select {
+  appearance: none;
+  background: none;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  padding: var(--sp-2) var(--sp-8) var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--c-ink);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.select:hover { border-color: var(--c-gold); }
+.select-wrap svg {
+  position: absolute;
+  right: var(--sp-3);
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  color: var(--c-muted);
+}
+
+/* --- Пустое состояние ------------------------------------------------------ */
+
+/* Атрибут hidden должен побеждать любые display из классов.
+   Без этого .empty-state{display:grid} и .grid{display:grid} перебивают
+   hidden, и скрытые блоки («Товар не найден», пустое избранное) видны. */
+[hidden] { display: none !important; }
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-4);
+  text-align: center;
+  padding-block: var(--sp-24);
+  color: var(--c-muted);
+}
+.empty-state svg { width: 56px; height: 56px; color: var(--c-line); }
+.empty-state__title { font-size: var(--fs-xl); color: var(--c-ink); }
+
+/* --- Хлебные крошки -------------------------------------------------------- */
+
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--c-muted);
+  padding-block: var(--sp-6);
+}
+.breadcrumbs a:hover { color: var(--c-gold); }
+.breadcrumbs [aria-current='page'] { color: var(--c-ink); }
+.breadcrumbs svg { width: 12px; height: 12px; opacity: 0.5; }
+
+/* --- Страница товара -------------------------------------------------------- */
+
+.product {
+  display: grid;
+  gap: var(--sp-12);
+  padding-bottom: var(--sp-16);
+}
+@media (min-width: 1024px) {
+  .product { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: var(--sp-16); }
+}
+
+.gallery { display: grid; gap: var(--sp-4); }
+.gallery__main {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.gallery__main img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: clamp(var(--sp-6), 5vw, var(--sp-16));
+}
+.gallery__thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: var(--sp-3);
+}
+.gallery__thumb {
+  aspect-ratio: 1;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  padding: var(--sp-2);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.gallery__thumb img { width: 100%; height: 100%; object-fit: contain; }
+.gallery__thumb:hover { border-color: var(--c-gold-decor); }
+.gallery__thumb[aria-current='true'] { border-color: var(--c-gold); border-width: 2px; }
+
+.product__info { display: grid; gap: var(--sp-4); align-content: start; }
+@media (min-width: 1024px) {
+  .product__info { position: sticky; top: calc(var(--header-h) + var(--sp-8)); }
+}
+.product__cat {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--c-gold);
+}
+.product__title { font-size: var(--fs-3xl); }
+.product__price {
+  font-size: var(--fs-2xl);
+  font-variant-numeric: tabular-nums;
+}
+.product__desc { color: var(--c-muted); }
+.product__actions {
+  display: grid;
+  gap: var(--sp-3);
+  margin-block: var(--sp-4);
+}
+@media (min-width: 480px) {
+  .product__actions { grid-template-columns: 1fr auto; }
+}
+
+.notice {
+  padding: var(--sp-4);
+  background: var(--c-gold-soft);
+  border-left: 3px solid var(--c-gold);
+  font-size: var(--fs-sm);
+  color: var(--c-ink-soft);
+}
+
+/* Аккордеон */
+.accordion { border-top: 1px solid var(--c-line); }
+.accordion__item { border-bottom: 1px solid var(--c-line); }
+.accordion__item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding-block: var(--sp-4);
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  cursor: pointer;
+  list-style: none;
+}
+.accordion__item summary::-webkit-details-marker { display: none; }
+.accordion__item summary svg {
+  width: 16px;
+  height: 16px;
+  color: var(--c-gold);
+  transition: transform var(--dur) var(--ease);
+  flex-shrink: 0;
+}
+.accordion__item[open] summary svg { transform: rotate(180deg); }
+.accordion__body { padding-bottom: var(--sp-4); color: var(--c-muted); font-size: var(--fs-sm); }
+
+.specs { display: grid; gap: var(--sp-3); }
+.specs__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px dashed var(--c-line);
+}
+.specs__row:last-child { border-bottom: none; }
+.specs__key { color: var(--c-muted); }
+.specs__val { text-align: right; color: var(--c-ink); }
+
+/* --- Тост ------------------------------------------------------------------ */
+
+.toast-region {
+  position: fixed;
+  left: 50%;
+  bottom: var(--sp-8);
+  transform: translateX(-50%);
+  z-index: 200;
+  display: grid;
+  gap: var(--sp-2);
+  pointer-events: none;
+  width: min(92vw, 420px);
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-6);
+  background: var(--c-ink);
+  color: #fff;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--fs-sm);
+  animation: toast-in var(--dur) var(--ease);
+}
+.toast svg { width: 18px; height: 18px; color: var(--c-gold-decor); flex-shrink: 0; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* --- 404 -------------------------------------------------------------------- */
+
+.error-page {
+  display: grid;
+  place-items: center;
+  gap: var(--sp-4);
+  text-align: center;
+  padding-block: clamp(var(--sp-16), 14vh, 160px);
+}
+.error-page__code {
+  font-family: var(--font-display);
+  font-size: clamp(5rem, 18vw, 11rem);
+  line-height: 1;
+  color: var(--c-gold-decor);
+}
+
+/* --- Скроллбар --------------------------------------------------------------- */
+
+@supports selector(::-webkit-scrollbar) {
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: var(--c-cream); }
+  ::-webkit-scrollbar-thumb {
+    background: var(--c-gold-decor);
+    border: 3px solid var(--c-cream);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--c-gold); }
+}
+
+/* Блокировка прокрутки при открытой модалке */
+body[data-lock='true'] { overflow: hidden; }

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Страница не найдена — Pegasus Store</title>
+  <meta name="description" content="Такой страницы нет. Вернитесь в каталог Pegasus Store.">
+  <meta name="theme-color" content="#f8f6f2">
+  <meta name="robots" content="noindex, follow">
+
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&display=swap">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body data-page="404">
+  <a class="skip-link" href="#main">Перейти к содержимому</a>
+
+  <div data-header></div>
+
+  <main id="main" class="main">
+    <div class="container error-page">
+      <p class="error-page__code">404</p>
+      <h1 class="section__title">Страница не найдена</h1>
+      <p style="color: var(--c-muted); max-width: 46ch;">
+        Возможно, ссылка устарела или адрес введён с ошибкой.
+        В каталоге наверняка найдётся что-то интересное.
+      </p>
+      <div style="display: flex; flex-wrap: wrap; gap: var(--sp-4); justify-content: center; margin-top: var(--sp-4);">
+        <a class="btn btn--primary" href="catalog.html">В каталог</a>
+        <a class="btn btn--ghost" href="index.html">На главную</a>
+      </div>
+    </div>
+  </main>
+
+  <div data-footer></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

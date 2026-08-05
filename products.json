@@ -1,0 +1,98 @@
+[
+    {
+        "id": 4,
+        "name": "Роутер Xiaomi AX3000T",
+        "price": 3190,
+        "category": "Гаджеты",
+        "subcategory": "Роутеры",
+        "description": "Wi-Fi 6 роутер с поддержкой стандарта AX3000 и чипом Qualcomm. Стабильный сигнал в квартире, простая настройка через приложение Mi Home.",
+        "images": [
+            "assets/images/gadgets/ax3000t.webp"
+        ],
+        "filters": {
+            "Бренд": "Xiaomi",
+            "Стандарт": "Wi-Fi 6"
+        },
+        "specs": {
+            "Бренд": "Xiaomi",
+            "Стандарт": "Wi-Fi 6",
+            "Скорость": "До 3000 Мбит/с",
+            "Чипсет": "Qualcomm"
+        },
+        "avitoLink": "https://www.avito.ru/orel/tovary_dlya_kompyutera/router_xiaomi_ax3000t_qualcomm_8135416220",
+        "isBestseller": true,
+        "isNew": false
+    },
+    {
+        "id": 5,
+        "name": "Блок питания Remax CA05 45W",
+        "price": 1990,
+        "category": "Зарядные устройства",
+        "subcategory": "Блоки питания",
+        "description": "Компактный блок питания на 45 Вт с поддержкой быстрой зарядки. Подходит для смартфонов, планшетов и лёгких ноутбуков.",
+        "images": [
+            "assets/images/chargers/remax-ca05-45w.webp"
+        ],
+        "filters": {
+            "Бренд": "Remax",
+            "Мощность": "45W"
+        },
+        "specs": {
+            "Бренд": "Remax",
+            "Мощность": "45W",
+            "Разъём": "USB-C",
+            "Быстрая зарядка": "Да"
+        },
+        "avitoLink": "",
+        "isBestseller": true,
+        "isNew": true
+    },
+    {
+        "id": 6,
+        "name": "Защитное стекло Remax для iPhone 15 Pro",
+        "price": 800,
+        "category": "Защитные стекла",
+        "subcategory": "iPhone 15",
+        "description": "Закалённое стекло 9H с олеофобным покрытием. Полное покрытие экрана, точная посадка по краям и высокая прозрачность.",
+        "images": [
+            "assets/images/glass/remax-glass-iphone15pro.webp"
+        ],
+        "filters": {
+            "Бренд": "Remax",
+            "Модель": "iPhone 15 Pro"
+        },
+        "specs": {
+            "Бренд": "Remax",
+            "Модель": "iPhone 15 Pro",
+            "Твёрдость": "9H",
+            "Покрытие": "Олеофобное"
+        },
+        "avitoLink": "",
+        "isBestseller": true,
+        "isNew": false
+    },
+    {
+        "id": 7,
+        "name": "Чехол Silicone Case для iPhone 15",
+        "price": 1490,
+        "category": "Чехлы",
+        "subcategory": "iPhone 15",
+        "description": "Силиконовый чехол с микрофиброй внутри и мягким на ощупь покрытием. Защищает корпус от царапин и не скользит в руке.",
+        "images": [
+            "assets/images/cases/iphone15-silicone-black.webp"
+        ],
+        "filters": {
+            "Модель": "iPhone 15",
+            "Цвет": "Чёрный"
+        },
+        "specs": {
+            "Модель": "iPhone 15",
+            "Цвет": "Чёрный",
+            "Материал": "Силикон",
+            "Подкладка": "Микрофибра"
+        },
+        "avitoLink": "",
+        "isBestseller": true,
+        "isNew": true
+    }
+]

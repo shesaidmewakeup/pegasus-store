@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Каталог — Pegasus Store</title>
+  <meta name="description" content="Каталог Pegasus Store: чехлы, защитные стёкла, зарядные устройства, гаджеты и техника. Фильтры по категории, модели и характеристикам.">
+  <meta name="theme-color" content="#f8f6f2">
+  <link rel="canonical" href="https://hermesss.ru/catalog.html">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Pegasus Store">
+  <meta property="og:locale" content="ru_RU">
+  <meta property="og:url" content="https://hermesss.ru/catalog.html">
+  <meta property="og:title" content="Каталог — Pegasus Store">
+  <meta property="og:description" content="Чехлы, защитные стёкла, зарядные устройства, гаджеты и техника.">
+  <meta property="og:image" content="https://hermesss.ru/assets/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&display=swap">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body data-page="catalog">
+  <a class="skip-link" href="#main">Перейти к содержимому</a>
+
+  <div data-header></div>
+
+  <main id="main" class="main">
+    <div class="container container--wide">
+      <nav class="breadcrumbs" aria-label="Хлебные крошки">
+        <a href="index.html">Главная</a>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        <span aria-current="page">Каталог</span>
+      </nav>
+
+      <div class="section__head" style="align-items: flex-start; text-align: left; margin-bottom: var(--sp-8);">
+        <h1 class="section__title">Каталог</h1>
+      </div>
+
+      <div class="catalog" data-catalog>
+        <aside class="sidebar" data-sidebar aria-label="Фильтры"></aside>
+
+        <div>
+          <div class="catalog__bar">
+            <p class="catalog__count" data-count aria-live="polite"></p>
+            <div class="select-wrap">
+              <label class="visually-hidden" for="sort">Сортировка</label>
+              <select class="select" id="sort" data-sort>
+                <option value="default">По умолчанию</option>
+                <option value="new">Сначала новинки</option>
+                <option value="cheap">Сначала дешевле</option>
+                <option value="expensive">Сначала дороже</option>
+              </select>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+          </div>
+
+          <div class="chips" data-chips style="margin-bottom: var(--sp-6);"></div>
+
+          <div class="grid" data-grid></div>
+
+          <div data-more hidden style="display: grid; justify-items: center; margin-top: var(--sp-12);">
+            <button type="button" class="btn btn--ghost" data-more-btn>Показать ещё</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div data-footer></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
