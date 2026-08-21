@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Избранное — Pegasus Store</title>
+  <script>
+    // Перенаправление со старого адреса /wishlist.html на новое избранное.
+    (function () {
+      window.location.replace(window.location.pathname.replace(/wishlist\.html$/, '') + '#/wishlist');
+    })();
+  </script>
+</head>
+<body>
+  <p>Избранное переехало. <a href="#/wishlist">Перейти</a></p>
+</body>
+</html>

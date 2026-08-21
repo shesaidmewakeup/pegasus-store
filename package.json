@@ -1,0 +1,24 @@
+{
+  "name": "pegasus-store",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "description": "Витрина премиальных гаджетов и аксессуаров. React + Vite + Tailwind CSS + lucide-react.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/postbuild.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide-react": "^1.33.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^6.1.0",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.2.2"
+  }
+}

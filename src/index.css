@@ -1,0 +1,196 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Pegasus Store — Design tokens (Tailwind v4 theme)
+   Золото разделено на два уровня: DECOR — только для крупных декоративных
+   элементов и рамок, TEXT — для любого текста (контраст WCAG AA).
+   ========================================================================== */
+
+@theme {
+  --color-cream: #f8f6f2;
+  --color-cream-deep: #ede8e0;
+  --color-surface: #ffffff;
+  --color-ink: #1c1c1c;
+  --color-ink-soft: #3d3a36;
+  --color-muted: #6b6560;
+  --color-line: #e6e1d8;
+  --color-gold: #8a6d3b;
+  --color-gold-decor: #d4b88a;
+  --color-gold-soft: #f0e6d6;
+  --color-danger: #a13c2f;
+  --color-success: #3f6b4f;
+
+  --font-display: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 88px;
+  }
+
+  body {
+    @apply bg-cream text-ink font-body antialiased;
+    text-rendering: optimizeLegibility;
+    min-height: 100vh;
+  }
+
+  img, picture, svg, video { display: block; max-width: 100%; }
+
+  h1, h2, h3, h4 {
+    @apply font-display font-normal leading-tight tracking-[-0.01em];
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+  :focus:not(:focus-visible) { outline: none; }
+
+  ::selection { background: var(--color-gold-soft); }
+
+  [hidden] { display: none !important; }
+}
+
+@layer components {
+  /* --- Кнопки ------------------------------------------------------------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 min-h-12 px-8 py-3
+           text-sm font-normal uppercase tracking-[0.14em] text-center border
+           transition-[background,color,border-color] duration-300 cursor-pointer select-none;
+  }
+  .btn:active { transform: translateY(1px); }
+
+  .btn-primary { @apply bg-ink text-white border-ink; }
+  .btn-primary:hover { background: var(--color-gold); border-color: var(--color-gold); }
+
+  .btn-gold { @apply border-gold text-gold; }
+  .btn-gold:hover { background: var(--color-gold); color: #fff; }
+
+  .btn-ghost { @apply border-line text-ink-soft; }
+  .btn-ghost:hover { border-color: var(--color-gold); color: var(--color-gold); }
+
+  /* Кнопка покупки: ведущая CTA, внешний переход на Авито */
+  .btn-buy { @apply bg-ink text-white border-ink; }
+  .btn-buy:hover { background: var(--color-gold); border-color: var(--color-gold); }
+  .btn-buy:disabled {
+    pointer-events: none;
+    opacity: 0.55;
+    background: var(--color-line);
+    color: var(--color-muted);
+    border-color: var(--color-line);
+  }
+
+  .btn-full { width: 100%; }
+
+  /* --- Карточка товара ---------------------------------------------------- */
+  .card {
+    @apply relative flex flex-col bg-surface border border-line rounded overflow-hidden
+           transition-[transform,box-shadow,border-color] duration-300;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(28, 28, 28, 0.1);
+    border-color: var(--color-gold-decor);
+  }
+
+  /* --- Чипы активных фильтров --------------------------------------------- */
+  .chip {
+    @apply inline-flex items-center gap-2 py-1 pl-3 pr-2 bg-gold-soft text-gold
+           text-xs rounded-full;
+  }
+  .chip button {
+    @apply grid place-items-center w-5 h-5 rounded-full transition-colors duration-150;
+  }
+  .chip button:hover { background: rgba(138, 109, 59, 0.18); }
+
+  /* --- Фильтры в сайдбаре -------------------------------------------------- */
+  .filter-btn {
+    @apply flex items-center justify-between gap-2 w-full px-3 py-2 text-left
+           text-sm text-ink-soft rounded transition-colors duration-150;
+  }
+  .filter-btn:hover { background: var(--color-gold-soft); color: var(--color-gold); }
+  .filter-btn[aria-pressed='true'] { background: var(--color-ink); color: #fff; }
+  .filter-btn__count { font-size: 0.75rem; opacity: 0.6; }
+
+  .filter-check {
+    @apply flex items-center gap-3 px-3 py-2 text-sm text-ink-soft rounded cursor-pointer
+           transition-colors duration-150;
+  }
+  .filter-check:hover { background: var(--color-gold-soft); }
+  .filter-check input {
+    width: 16px; height: 16px;
+    accent-color: var(--color-gold);
+    cursor: pointer;
+  }
+
+  /* --- Характеристики ------------------------------------------------------ */
+  .specs-row {
+    @apply flex justify-between gap-4 pb-2 border-b border-dashed border-line;
+  }
+  .specs-row:last-child { border-bottom: none; }
+  .specs-key { @apply text-muted; }
+  .specs-val { @apply text-right text-ink; }
+
+  /* --- Скелетоны ----------------------------------------------------------- */
+  .skeleton {
+    @apply relative overflow-hidden bg-cream-deep rounded;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+  @keyframes shimmer { to { transform: translateX(100%); } }
+
+  /* --- Появление при прокрутке --------------------------------------------- */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 600ms cubic-bezier(0.22, 0.61, 0.36, 1),
+                transform 600ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .reveal.reveal--visible { opacity: 1; transform: none; }
+
+  /* --- Оверлеи (поиск, мобильное меню) ------------------------------------- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgba(248, 246, 242, 0.97);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 280ms cubic-bezier(0.22, 0.61, 0.36, 1),
+                visibility 280ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .overlay[data-open='true'] { opacity: 1; visibility: visible; }
+
+  /* --- Тост ---------------------------------------------------------------- */
+  .toast {
+    @apply flex items-center gap-3 px-6 py-3 bg-ink text-white text-sm rounded shadow-lg;
+    animation: toast-in 280ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: none; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal { opacity: 1; transform: none; }
+}

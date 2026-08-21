@@ -5,9 +5,14 @@ import os
 import re
 import shutil
 
-# Путь к нашему JSON и папке с картинками (относительно скрипта)
-JSON_FILE = 'products.json'
-IMAGES_DIR = 'assets/images'
+# Путь к нашему JSON и папке с картинками (относительно скрипта).
+# После миграции на React/Vite данные и картинки лежат в public/ —
+# Vite просто копирует эту папку в сборку как есть.
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+JSON_FILE = os.path.join(PROJECT_ROOT, 'public', 'products.json')
+IMAGES_DIR = os.path.join(PROJECT_ROOT, 'public', 'assets', 'images')
+# Путь в JSON остаётся относительным (без public/) — его видит браузер.
+IMAGES_REL = 'assets/images'
 
 # Транслитерация: имена папок и файлов остаются латиницей, иначе пути
 # ломаются на регистрозависимых хостингах и в URL.
@@ -180,10 +185,11 @@ class PegasusAdminApp:
             return
         
         item_values = self.tree.item(selected[0], "values")
-        product_id = int(item_values[0])
+        # ID хранится как строка: в базе могут быть и числа, и строки.
+        product_id = str(item_values[0])
         
-        # Умное сравнение
-        product = next((p for p in self.products_data if str(p.get("id")) == str(product_id)), None)
+        # Умное сравнение — строка к строке, чтобы строковые ID не ломались
+        product = next((p for p in self.products_data if str(p.get("id")) == product_id), None)
         if not product:
             return
 
@@ -212,8 +218,12 @@ class PegasusAdminApp:
         self.is_new_var.set(bool(product.get("isNew")))
         self.is_best_var.set(bool(product.get("isBestseller")))
         
+        # Загружаем в форму именно `specs`: это полная таблица характеристик
+        # на карточке товара. `filters` — подмножество для сайдбара каталога.
+        # Раньше поле читало только `filters`, поэтому правка товара
+        # безвозвратно обрезала таблицу характеристик.
         self.specs_text.delete("1.0", tk.END)
-        specs = product.get("filters", {})
+        specs = product.get("specs") or product.get("filters") or {}
         for key, val in specs.items():
             self.specs_text.insert(tk.END, f"{key}: {val}\n")
             
@@ -245,7 +255,9 @@ class PegasusAdminApp:
             return
             
         if messagebox.askyesno("Подтверждение", f"Вы точно хотите удалить этот товар из базы?"):
-            self.products_data = [p for p in self.products_data if p["id"] != self.editing_id]
+            # Сравнение строкой к строке: строковые ID (например, "4") раньше
+            # никогда не совпадали с числом и удаление молча не срабатывало.
+            self.products_data = [p for p in self.products_data if str(p.get("id")) != str(self.editing_id)]
             self.save_to_file()
             self.update_tree()
             self.reset_form()
@@ -298,17 +310,17 @@ class PegasusAdminApp:
                 # Если пути не совпадают, копируем
                 if os.path.abspath(self.selected_image_path) != os.path.abspath(destination_path):
                     shutil.copy2(self.selected_image_path, destination_path)
-                json_image_path = f"{IMAGES_DIR}/{safe_category_folder}/{safe_filename}"
+                json_image_path = f"{IMAGES_REL}/{safe_category_folder}/{safe_filename}"
             except shutil.SameFileError:
                 # Если файл уже лежит в нужной папке проекта, просто запоминаем путь
-                json_image_path = f"{IMAGES_DIR}/{safe_category_folder}/{safe_filename}"
+                json_image_path = f"{IMAGES_REL}/{safe_category_folder}/{safe_filename}"
             except Exception as e:
                 messagebox.showerror("Ошибка", f"Не удалось скопировать файл: {e}")
                 return
         
         if self.editing_id:
             # РЕДАКТИРОВАНИЕ
-            product = next((p for p in self.products_data if p["id"] == self.editing_id), None)
+            product = next((p for p in self.products_data if str(p.get("id")) == str(self.editing_id)), None)
             if product:
                 product["name"] = name
                 product["price"] = price
@@ -318,8 +330,12 @@ class PegasusAdminApp:
                 product["description"] = description
                 product["isNew"] = is_new
                 product["isBestseller"] = is_best
+                # filters — подмножество характеристик для сайдбара каталога.
+                # В форме одна таблица «Характеристики»: обновляем оба поля,
+                # но НЕ трогаем `specs`, если товар был создан без него.
                 product["filters"] = filters_dict
-                product["specs"] = filters_dict
+                if 'specs' in product:
+                    product["specs"] = filters_dict
                 if json_image_path:
                     product["images"] = [json_image_path]
             msg = f"Товар '{name}' успешно обновлен!"

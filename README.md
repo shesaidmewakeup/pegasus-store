@@ -1,70 +1,79 @@
 # Pegasus Store
 
 Витрина премиальных гаджетов и аксессуаров: чехлы, защитные стёкла, зарядные
-устройства и техника. Сделки проходят через безопасную сделку Авито.
-
-Статический сайт без сборки и зависимостей в рантайме — открывается как есть,
-хостится на GitHub Pages.
+устройства и техника. Сделки проходят через безопасную сделку Авито — корзины
+и регистрации нет: кнопка «Купить» ведёт прямо в объявление на Авито.
 
 ## Стек
 
-- Семантический HTML5
-- Чистый CSS с дизайн-токенами (`css/base.css`, `css/components.css`)
-- JavaScript ES-модули без фреймворков и внешних библиотек
-- Python — вспомогательные скрипты сборки (sitemap, оптимизация картинок) и CMS
+- **React 19 + Vite** — SPA с hash-роутером (работает на любом статическом хостинге без настройки сервера)
+- **Tailwind CSS v4** — дизайн-токены и утилиты
+- **lucide-react** — иконки
+- **Python** — настольная CMS (`manager.py`) и вспомогательные скрипты
 
 ## Структура
 
 ```
-├── index.html          Главная
-├── catalog.html        Каталог с фильтрами
-├── product.html        Карточка товара (?id=N)
-├── wishlist.html       Избранное
-├── 404.html            Страница ошибки
-├── products.json       Данные каталога — единственный источник правды
-├── css/
-│   ├── base.css        Токены, сброс, layout, типографика
-│   └── components.css  Модалки, каталог, галерея, тосты
-├── js/
-│   ├── app.js          Точка входа и логика страниц
-│   ├── store.js        Загрузка и нормализация товаров
-│   ├── ui.js           Карточки, шапка, футер, оверлеи
-│   ├── wishlist.js     Избранное в localStorage
-│   ├── icons.js        Инлайн SVG-иконки
-│   └── utils.js        Экранирование, цены, debounce, focus-trap
-├── assets/             Изображения (WebP + JPEG-фолбэки)
-├── build.py            Генерация sitemap.xml и apple-touch-icon
-├── optimize_images.py  Сжатие и конвертация изображений в WebP
-└── manager.py          Настольная CMS для правки каталога (Tkinter)
+├── index.html              Точка входа Vite (SEO-мета, JSON-LD, шрифты)
+├── vite.config.js          Сборка, base = /pegasus-store/
+├── public/                 Копируется в сборку как есть
+│   ├── products.json       Данные каталога — единственный источник правды
+│   ├── assets/             Изображения (WebP), hero, og-image, apple-touch-icon
+│   ├── catalog.html        Редиректы со старых адресов на новые маршруты
+│   ├── product.html
+│   ├── wishlist.html
+│   ├── favicon.svg, site.webmanifest, robots.txt
+├── src/
+│   ├── main.jsx / App.jsx  Точка входа, провайдеры, маршруты
+│   ├── index.css           Тема (токены), кнопки, карточки, оверлеи
+│   ├── lib/                store (загрузка товаров), wishlist, toast, utils
+│   ├── hooks/              useMeta (SEO), useFocusTrap
+│   ├── components/         Header, Footer, ProductCard, BuyButton, оверлеи…
+│   └── pages/              Home, Catalog, Product, Wishlist, NotFound
+├── scripts/
+│   ├── generate-sitemap.mjs  sitemap.xml из products.json (при сборке)
+│   └── postbuild.mjs         404.html + sitemap в dist/
+├── .github/workflows/deploy.yml  Авто-деплой на GitHub Pages
+├── build.py                Генерация apple-touch-icon
+├── optimize_images.py      Сжатие и конвертация изображений в WebP
+└── manager.py              Настольная CMS для правки каталога (Tkinter)
 ```
 
 ## Запуск
 
-Нужен HTTP-сервер: страницы используют ES-модули и `fetch`, поэтому
-через `file://` работать не будут.
+```bash
+npm install
+npm run dev        # http://localhost:5173
+```
+
+Сборка и превью:
 
 ```bash
-python3 -m http.server 8000
-# http://localhost:8000
+npm run build      # dist/ + sitemap.xml + 404.html
+npm run preview    # проверить собранный сайт
 ```
 
 ## Управление товарами
 
-Вариант 1 — вручную отредактировать `products.json`.
+Каталог редактируется в `public/products.json` — через настольную CMS или вручную.
+Новый товар появляется на витрине сразу после обновления страницы: пересборка
+не нужна.
 
-Вариант 2 — настольная CMS:
+Вариант 1 — настольная CMS (рекомендуется):
 
 ```bash
 python3 manager.py
 ```
 
-Приложение копирует выбранное фото в нужную папку, заполняет характеристики
-и сохраняет JSON.
+CMS копирует выбранное фото в `public/assets/images/<категория>/`, заполняет
+характеристики и сохраняет JSON. Поддерживает и числовые, и строковые ID.
 
-После изменения каталога обновите карту сайта:
+Вариант 2 — вручную отредактировать `public/products.json`.
+
+После добавления фото в новых форматах (не WebP) оптимизируйте картинки:
 
 ```bash
-python3 build.py
+python3 optimize_images.py   # нужен Pillow: pip install Pillow
 ```
 
 ### Формат товара
@@ -79,24 +88,34 @@ python3 build.py
   "description": "Текст для карточки товара и meta-описания",
   "images": ["assets/images/gadgets/ax3000t.webp"],
   "filters": { "Бренд": "Xiaomi" },   // чекбоксы в сайдбаре каталога
-  "specs":   { "Бренд": "Xiaomi" },   // таблица характеристик
+  "specs":   { "Бренд": "Xiaomi" },   // таблица характеристик на карточке
   "avitoLink": "https://www.avito.ru/...",  // пусто → «Нет в наличии»
   "isBestseller": true,           // показывать в блоке «Популярное»
   "isNew": false                  // бейдж «Новинка»
 }
 ```
 
-Пустой `avitoLink` — это нормально: кнопка покупки станет неактивной вместо
-того, чтобы вести в никуда.
+`filters` и `specs` — разные вещи: первый управляет фильтрами в сайдбаре
+каталога, второй — таблицей характеристик на странице товара. Обычно они
+совпадают, но могут отличаться (например, у роутера в `specs` больше строк).
 
-## Оптимизация изображений
+Пустой `avitoLink` — это нормально: кнопка покупки станет неактивной («Нет в
+наличии») вместо того, чтобы вести в никуда.
 
-```bash
-python3 optimize_images.py
-```
+## Деплой
 
-Скрипт конвертирует изображения в WebP, ужимает hero и og-image.
-Требуется Pillow (`pip install Pillow`).
+Автоматический деплой на GitHub Pages при пуше в `main`
+(`.github/workflows/deploy.yml`). Базовый путь — `/pegasus-store/`.
+
+- SPA-фолбэк: `index.html` копируется в `404.html`, так что любой маршрут
+  открывается напрямую.
+- Старые адреса `catalog.html`, `product.html?id=…`, `wishlist.html` редиректят
+  на новые маршруты.
+- `sitemap.xml` генерируется при каждой сборке из `products.json`.
+
+При деплое на свой домен: поменяйте `base` в `vite.config.js` на `/` и
+обновите `SITE` в `scripts/generate-sitemap.mjs` и канонические URL в
+`index.html`.
 
 ## Доступность
 
@@ -105,8 +124,3 @@ python3 optimize_images.py
 - Модалки закрываются по Escape, фокус заперт внутри
 - Все интерактивные элементы достижимы с клавиатуры, цели нажатия ≥ 44 px
 - Анимации отключаются при `prefers-reduced-motion`
-
-## Деплой
-
-GitHub Pages отдаёт содержимое ветки `main`. Файл `CNAME` привязывает
-домен `hermesss.ru`.

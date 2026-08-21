@@ -36,9 +36,13 @@ def convert_to_webp(path, quality=PRODUCT_QUALITY):
     return target
 
 
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+ASSETS_DIR = os.path.join(PROJECT_ROOT, 'public', 'assets')
+
+
 def main():
     # 1. Фото товаров
-    images_root = os.path.join('assets', 'images')
+    images_root = os.path.join(ASSETS_DIR, 'images')
     if os.path.isdir(images_root):
         print('Фото товаров:')
         converted = 0
@@ -51,7 +55,7 @@ def main():
             print('  всё уже в WebP')
 
     # 2. Hero-изображение: WebP + уменьшенный JPEG-фолбэк
-    hero_jpg = os.path.join('assets', 'hero-bg.jpg')
+    hero_jpg = os.path.join(ASSETS_DIR, 'hero-bg.jpg')
     if os.path.exists(hero_jpg):
         print('Hero:')
         hero = Image.open(hero_jpg).convert('RGB')
@@ -59,13 +63,13 @@ def main():
             height = round(hero.height * MAX_HERO_WIDTH / hero.width)
             hero = hero.resize((MAX_HERO_WIDTH, height), Image.LANCZOS)
             hero.save(hero_jpg, 'JPEG', quality=78, optimize=True, progressive=True)
-        hero.save(os.path.join('assets', 'hero-bg.webp'), 'WEBP',
+        hero.save(os.path.join(ASSETS_DIR, 'hero-bg.webp'), 'WEBP',
                   quality=HERO_QUALITY, method=6)
-        print(f'  webp: {kb(os.path.join("assets", "hero-bg.webp"))} KB'
+        print(f'  webp: {kb(os.path.join(ASSETS_DIR, "hero-bg.webp"))} KB'
               f' | jpg: {kb(hero_jpg)} KB')
 
     # 3. og-image: ровно 1200x630 для соцсетей
-    og_jpg = os.path.join('assets', 'og-image.jpg')
+    og_jpg = os.path.join(ASSETS_DIR, 'og-image.jpg')
     if os.path.exists(og_jpg):
         og = Image.open(og_jpg)
         if og.size != (1200, 630):
