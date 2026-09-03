@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ShieldCheck, Truck, PackageCheck } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { SkeletonGrid } from '../components/Skeletons.jsx';
+import { StoreError } from '../components/StoreError.jsx';
 import { Reveal } from '../components/Reveal.jsx';
 import { useStore, getFeatured } from '../lib/store.jsx';
 import { resolveAsset } from '../lib/utils.js';
@@ -26,7 +27,7 @@ const BENEFITS = [
 ];
 
 export function Home() {
-  const { products } = useStore();
+  const { products, error } = useStore();
   const featured = useMemo(() => (products ? getFeatured(products, 4) : []), [products]);
 
   return (
@@ -75,7 +76,9 @@ export function Home() {
             <p className="text-xs uppercase tracking-[0.25em] text-gold font-medium">Выбор покупателей</p>
             <h2 className="text-[clamp(2rem,1.4rem+2.8vw,3.5rem]" id="featured-title">Популярное</h2>
           </div>
-          {products === null ? (
+          {error ? (
+            <StoreError error={error} />
+          ) : products === null ? (
             <SkeletonGrid count={4} />
           ) : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(min(260px,100%),1fr))] gap-6 gap-y-8">

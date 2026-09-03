@@ -1,12 +1,16 @@
 /**
- * Каталог товаров: загрузка из public/products.json, нормализация и селекторы.
- * products.json — единственный источник правды, его редактирует manager.py.
- * Новый товар появляется на витрине после обычного обновления страницы —
+ * Каталог товаров: загрузка из Supabase (таблица products), нормализация
+ * и селекторы. Данные редактируются менеджером (manager.py) напрямую в БД —
+ * новый товар появляется на витрине после обычного обновления страницы,
  * пересборка не нужна.
+ *
+ * Переменные окружения для подключения — в .env (шаблон .env.example),
+ * клиент — в lib/supabase.js.
  */
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { normalizeId, parsePrice, slugify } from './utils.js';
+import { supabase, isSupabaseConfigured } from './supabase.js';
 
 /**
  * @typedef {Object} Product
@@ -21,12 +25,13 @@ import { normalizeId, parsePrice, slugify } from './utils.js';
  * @property {string} avitoLink
  * @property {boolean} isNew
  * @property {boolean} isBestseller
+ * @property {boolean} inStock
  * @property {string} description
  * @property {string} slug
  */
 
 /**
- * Приводит запись из products.json к предсказуемой форме.
+ * Приводит запись из БД Supabase (snake_case) к предсказуемой форме.
  * @param {Record<string, any>} raw
  * @param {number} index
  * @returns {Product}
@@ -35,7 +40,12 @@ function normalize(raw, index) {
   const images = Array.isArray(raw.images) ? raw.images.filter(Boolean) : [];
   const specs = raw.specs && typeof raw.specs === 'object' ? raw.specs : {};
   const filters = raw.filters && typeof raw.filters === 'object' ? raw.filters : {};
-  const isBestseller = Boolean(raw.isBestseller);
+
+  const avitoLink = raw.avito_link ?? raw.avitoLink;
+  const isNew = raw.is_new ?? raw.isNew;
+  const isBestseller = raw.is_bestseller ?? raw.isBestseller;
+  // По умолчанию товар в наличии (колонки может не быть у старых записей).
+  const inStock = raw.in_stock ?? raw.inStock;
 
   return {
     id: normalizeId(raw.id ?? index),
@@ -46,9 +56,10 @@ function normalize(raw, index) {
     images,
     specs,
     filters,
-    avitoLink: typeof raw.avitoLink === 'string' ? raw.avitoLink.trim() : '',
-    isNew: Boolean(raw.isNew),
-    isBestseller,
+    avitoLink: typeof avitoLink === 'string' ? avitoLink.trim() : '',
+    isNew: Boolean(isNew),
+    isBestseller: Boolean(isBestseller),
+    inStock: inStock !== false,
     description: String(raw.description ?? ''),
     slug: slugify(raw.name ?? ''),
   };
@@ -65,17 +76,20 @@ export function StoreProvider({ children }) {
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch(`${import.meta.env.BASE_URL}products.json`, {
-          cache: 'no-cache',
-        });
-        if (!response.ok) {
-          throw new Error(`Не удалось загрузить каталог: HTTP ${response.status}`);
+        if (!isSupabaseConfigured) {
+          throw new Error(
+            'Supabase не настроен: добавьте VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY в файл .env (шаблон — .env.example).',
+          );
         }
-        const raw = await response.json();
-        if (!Array.isArray(raw)) {
-          throw new Error('Каталог повреждён: ожидался массив товаров');
-        }
-        if (!cancelled) setProducts(raw.map(normalize));
+
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('sort_order', { ascending: true })
+          .order('id', { ascending: true });
+
+        if (error) throw error;
+        if (!cancelled) setProducts((data ?? []).map(normalize));
       } catch (e) {
         if (!cancelled) setError(e);
       }

@@ -1,5 +1,11 @@
 node_modules/
 dist/
+
+# Секреты окружения (шаблон с описанием — .env.example)
+.env
+.env.*
+!.env.example
+
 .DS_Store
 Thumbs.db
 *.log

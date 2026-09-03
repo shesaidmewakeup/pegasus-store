@@ -6,6 +6,7 @@ import { ProductCard } from '../components/ProductCard.jsx';
 import { BuyButton } from '../components/BuyButton.jsx';
 import { Breadcrumbs } from '../components/Breadcrumbs.jsx';
 import { SkeletonGrid } from '../components/Skeletons.jsx';
+import { StoreError } from '../components/StoreError.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
 import { useWishlist } from '../lib/wishlist.jsx';
 import { useToast } from '../lib/toast.jsx';
@@ -21,7 +22,7 @@ const TRUST = [
 ];
 
 export function Product() {
-  const { products } = useStore();
+  const { products, error } = useStore();
   const [params] = useSearchParams();
   const id = params.get('id') ?? '';
   const product = useMemo(
@@ -57,11 +58,21 @@ export function Product() {
             '@type': 'Offer',
             price: product.price,
             priceCurrency: 'RUB',
-            availability: product.avitoLink ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+            availability: product.avitoLink && product.inStock !== false
+              ? 'https://schema.org/InStock'
+              : 'https://schema.org/OutOfStock',
           },
         }
       : undefined,
   });
+
+  if (error) {
+    return (
+      <div className="container mx-auto max-w-[1280px] px-6">
+        <StoreError error={error} />
+      </div>
+    );
+  }
 
   if (product === undefined && products !== null) {
     return (
@@ -96,6 +107,11 @@ export function Product() {
           {/* --- Галерея --- */}
           <div className="grid gap-4 self-start">
             <div className="relative overflow-hidden rounded border border-line bg-white">
+              {product.inStock === false && (
+                <span className="absolute top-4 left-4 z-[1] px-3 py-1 bg-muted text-white text-[10px] uppercase tracking-[0.16em]">
+                  Продано
+                </span>
+              )}
               {product.isNew && (
                 <span className="absolute top-4 left-4 z-[1] px-3 py-1 bg-gold text-white text-[10px] uppercase tracking-[0.16em]">
                   Новинка
@@ -110,7 +126,7 @@ export function Product() {
                   height={900}
                   fetchPriority="high"
                   decoding="async"
-                  className="aspect-square w-full object-contain p-8"
+                  className={`aspect-square w-full object-contain p-8 ${product.inStock === false ? 'opacity-60' : ''}`}
                 />
               ) : (
                 <div className="aspect-square grid w-full place-items-center text-line">

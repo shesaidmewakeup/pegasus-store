@@ -7,7 +7,8 @@ import { isAvitoAvailable } from '../lib/store.jsx';
  * @param {{ product: import('../lib/store.jsx').Product, className?: string }}
  */
 export function BuyButton({ product, className = 'btn-buy btn-full' }) {
-  const available = isAvitoAvailable(product);
+  // Товар можно купить, только если он в наличии И есть ссылка на Авито.
+  const available = isAvitoAvailable(product) && product.inStock !== false;
 
   if (available) {
     return (

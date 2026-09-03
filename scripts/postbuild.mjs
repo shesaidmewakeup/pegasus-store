@@ -1,6 +1,6 @@
 /**
  * После сборки Vite:
- *  1. генерирует sitemap.xml из products.json;
+ *  1. генерирует sitemap.xml из Supabase (см. generate-sitemap.mjs);
  *  2. копирует index.html в 404.html — SPA-фолбэк для GitHub Pages.
  */
 import { readFile, writeFile, copyFile } from 'node:fs/promises';

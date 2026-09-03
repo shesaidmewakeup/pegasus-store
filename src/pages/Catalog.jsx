@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { SkeletonGrid } from '../components/Skeletons.jsx';
+import { StoreError } from '../components/StoreError.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
 import { Breadcrumbs } from '../components/Breadcrumbs.jsx';
 import { useStore, getCategories, getCategoryCounts } from '../lib/store.jsx';
@@ -49,7 +50,7 @@ function specFacet(products, name) {
 }
 
 export function Catalog() {
-  const { products } = useStore();
+  const { products, error } = useStore();
   const [params, setParams] = useSearchParams();
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
@@ -305,7 +306,9 @@ export function Catalog() {
 
         {/* Сетка товаров */}
         <div>
-          {filtered === null ? (
+          {error ? (
+            <StoreError error={error} />
+          ) : filtered === null ? (
             <SkeletonGrid count={6} />
           ) : filtered.length === 0 ? (
             <EmptyState

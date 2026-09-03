@@ -5,6 +5,7 @@ import { X, Search } from 'lucide-react';
 import { Overlay } from './Overlay.jsx';
 import { ProductCard } from './ProductCard.jsx';
 import { SkeletonGrid } from './Skeletons.jsx';
+import { StoreError } from './StoreError.jsx';
 import { useStore } from '../lib/store.jsx';
 import { highlightHtml } from '../lib/utils.js';
 
@@ -29,7 +30,7 @@ function useSearchResults(query) {
 /** @param {{ open: boolean, onClose: () => void }} */
 export function SearchOverlay({ open, onClose }) {
   const [query, setQuery] = useState('');
-  const { products } = useStore();
+  const { products, error } = useStore();
   const { products: results, q } = useSearchResults(query);
 
   // При каждом открытии — пустое поле и фокус
@@ -67,7 +68,9 @@ export function SearchOverlay({ open, onClose }) {
 
         {q && (
           <div className="mt-12">
-            {products === null ? (
+            {error ? (
+              <StoreError error={error} />
+            ) : products === null ? (
               <SkeletonGrid count={4} />
             ) : results.length === 0 ? (
               <p className="py-16 text-center text-muted">

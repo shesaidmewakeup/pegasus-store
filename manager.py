@@ -1,20 +1,34 @@
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-import json
+"""
+Pegasus Store CMS — локальный менеджер товаров поверх Supabase.
+
+Товары хранятся в таблице `products` (Supabase Postgres), фото — в публичном
+бакете `product-images` (Supabase Storage). Приложение работает напрямую с
+REST API Supabase; локальный products.json больше не используется.
+
+Зависимости:  pip install requests
+
+Настройки читаются из файла `.env` рядом со скриптом (или из переменных
+окружения):
+  VITE_SUPABASE_URL    — Project URL (Supabase Dashboard → Settings → API)
+  SUPABASE_SERVICE_KEY — service_role ключ (тот же экран). НИКОГДА не
+                         публикуйте его и не кладите в переменные VITE_*.
+"""
+
 import os
 import re
-import shutil
+import time
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+from urllib.parse import quote
 
-# Путь к нашему JSON и папке с картинками (относительно скрипта).
-# После миграции на React/Vite данные и картинки лежат в public/ —
-# Vite просто копирует эту папку в сборку как есть.
+import requests
+
+# Бакет в Supabase Storage, куда загружаются фото товаров.
+STORAGE_BUCKET = 'product-images'
+
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-JSON_FILE = os.path.join(PROJECT_ROOT, 'public', 'products.json')
-IMAGES_DIR = os.path.join(PROJECT_ROOT, 'public', 'assets', 'images')
-# Путь в JSON остаётся относительным (без public/) — его видит браузер.
-IMAGES_REL = 'assets/images'
 
-# Транслитерация: имена папок и файлов остаются латиницей, иначе пути
+# Транслитерация: имена объектов в Storage остаются латиницей, иначе пути
 # ломаются на регистрозависимых хостингах и в URL.
 TRANSLIT = {
     'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
@@ -31,25 +45,186 @@ def slugify(text):
     result = re.sub(r'[^a-z0-9]+', '-', result)
     return result.strip('-') or 'item'
 
+
+# --- Конфигурация ---------------------------------------------------------
+
+def read_dotenv():
+    """Читает файл .env (KEY=VALUE). Значения из окружения имеют приоритет."""
+    env = {}
+    dotenv_path = os.path.join(PROJECT_ROOT, '.env')
+    try:
+        with open(dotenv_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, _, value = line.partition('=')
+                env[key.strip()] = value.strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return env
+
+
+def load_config():
+    dotenv = read_dotenv()
+    return {
+        'url': (os.environ.get('VITE_SUPABASE_URL') or dotenv.get('VITE_SUPABASE_URL') or '').rstrip('/'),
+        'service_key': (os.environ.get('SUPABASE_SERVICE_KEY')
+                        or dotenv.get('SUPABASE_SERVICE_KEY') or ''),
+    }
+
+
+# --- Supabase REST API ------------------------------------------------------
+
+def _headers(config):
+    return {
+        'apikey': config['service_key'],
+        'Authorization': f"Bearer {config['service_key']}",
+        'Content-Type': 'application/json',
+    }
+
+
+# Соответствие ключей products.json ↔ колонок таблицы products.
+KEY_MAP = {
+    'avitoLink': 'avito_link',
+    'isNew': 'is_new',
+    'isBestseller': 'is_bestseller',
+    'inStock': 'in_stock',
+}
+
+
+def from_db(row):
+    """snake_case (строка из БД) → camelCase, привычный остальному коду."""
+    reverse = {value: key for key, value in KEY_MAP.items()}
+    return {reverse.get(key, key): value for key, value in row.items()}
+
+
+def fetch_products(config):
+    """Возвращает список товаров в camelCase. Порядок — как на витрине."""
+    resp = requests.get(
+        f"{config['url']}/rest/v1/products",
+        params={'select': '*', 'order': 'sort_order.asc,id.asc'},
+        headers=_headers(config),
+        timeout=20,
+    )
+    resp.raise_for_status()
+    return [from_db(row) for row in resp.json()]
+
+
+def insert_product(config, payload):
+    resp = requests.post(
+        f"{config['url']}/rest/v1/products",
+        json=payload,
+        headers=_headers(config),
+        timeout=20,
+    )
+    resp.raise_for_status()
+
+
+def update_product(config, product_id, payload):
+    resp = requests.patch(
+        f"{config['url']}/rest/v1/products?id=eq.{quote(str(product_id))}",
+        json=payload,
+        headers=_headers(config),
+        timeout=20,
+    )
+    resp.raise_for_status()
+
+
+def delete_product_row(config, product_id):
+    resp = requests.delete(
+        f"{config['url']}/rest/v1/products?id=eq.{quote(str(product_id))}",
+        headers=_headers(config),
+        timeout=20,
+    )
+    resp.raise_for_status()
+
+
+# --- Supabase Storage (фото) ------------------------------------------------
+
+_MIME = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.webp': 'image/webp',
+}
+
+
+def upload_image(config, local_path, category):
+    """Загружает фото в бакет product-images и возвращает его публичный URL."""
+    ext = os.path.splitext(local_path)[1].lower()
+    ext = ext if ext in _MIME else '.jpg'
+    stem = os.path.splitext(os.path.basename(local_path))[0]
+    # Префикс из категории + timestamp: ключи не пересекаются между товарами.
+    key = f"{slugify(category) or 'raznoe'}/{slugify(stem)}-{int(time.time())}{ext}"
+
+    with open(local_path, 'rb') as fh:
+        data = fh.read()
+
+    headers = {
+        'apikey': config['service_key'],
+        'Authorization': f"Bearer {config['service_key']}",
+        'Content-Type': _MIME[ext],
+    }
+    resp = requests.post(
+        f"{config['url']}/storage/v1/object/{STORAGE_BUCKET}/{key}",
+        data=data,
+        headers=headers,
+        timeout=120,
+    )
+    resp.raise_for_status()
+    return f"{config['url']}/storage/v1/object/public/{STORAGE_BUCKET}/{key}"
+
+
+def delete_image(config, image_url):
+    """Удаляет объект из бакета, если URL указывает на него (best effort)."""
+    prefix = f"{config['url']}/storage/v1/object/public/{STORAGE_BUCKET}/"
+    if not image_url.startswith(prefix):
+        # Локальные пути (assets/...) из старой схемы не трогаем.
+        return
+    key = image_url.split(prefix, 1)[1]
+    # DELETE /object/{bucket}/{key} — удаление одного объекта. Не используем
+    # POST /object/{bucket}/remove: на новых версиях Supabase Storage этот путь
+    # трактуется как загрузка файла с именем «remove», и объект не удаляется.
+    headers = {
+        'apikey': config['service_key'],
+        'Authorization': f"Bearer {config['service_key']}",
+    }
+    resp = requests.delete(
+        f"{config['url']}/storage/v1/object/{STORAGE_BUCKET}/{key}",
+        headers=headers,
+        timeout=20,
+    )
+    resp.raise_for_status()
+
+
+# --- Приложение --------------------------------------------------------------
+
 class PegasusAdminApp:
-    def __init__(self, root):
+    def __init__(self, root, config):
         self.root = root
+        self.config = config
         self.root.title("Pegasus Store — CMS (Система управления)")
         self.root.geometry("1100x700") # Слегка увеличили высоту окна для нового поля
         self.root.configure(padx=15, pady=15)
 
         self.selected_image_path = None
-        self.editing_id = None 
-        self.products_data = [] 
+        self.editing_id = None
+        self.products_data = []
 
         self.create_widgets()
         self.load_products()
 
     def create_widgets(self):
+        # Стиль для_Treeview: увеличиваем высоту строк, чтобы текст не обрезался
+        style = ttk.Style()
+        style.configure("Treeview", rowheight=30, font=("Arial", 10))
+        style.configure("Treeview.Heading", font=("Arial", 10, "bold"))
+
         # Разделяем экран на две части: левая (форма) и правая (дерево)
         left_frame = ttk.Frame(self.root, width=400)
         left_frame.pack(side="left", fill="y", padx=(0, 15))
-        
+
         right_frame = ttk.Frame(self.root)
         right_frame.pack(side="right", fill="both", expand=True)
 
@@ -90,6 +265,10 @@ class PegasusAdminApp:
         ttk.Checkbutton(flags_frame, text="Показывать в «Популярное»",
                         variable=self.is_best_var).pack(side="left", padx=(15, 0))
 
+        # Наличие товара: если снято — на витрине кнопка «Нет в наличии»
+        self.in_stock_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(left_frame, text="В наличии", variable=self.in_stock_var).pack(anchor="w", pady=(0, 10))
+
         ttk.Label(left_frame, text="Характеристики (Формат -> Разъем: Type-C):").pack(anchor="w")
         self.specs_text = tk.Text(left_frame, height=5, width=50, font=("Arial", 10))
         self.specs_text.pack(fill="x", pady=(0, 15))
@@ -108,7 +287,7 @@ class PegasusAdminApp:
 
         self.cancel_btn = ttk.Button(btn_frame, text="ОЧИСТИТЬ ФОРМУ", command=self.reset_form)
         self.cancel_btn.pack(side="right", fill="x", expand=True)
-        
+
         self.del_btn = ttk.Button(left_frame, text="❌ УДАЛИТЬ ТОВАР", command=self.delete_product)
         self.del_btn.pack(fill="x", pady=(10, 0))
 
@@ -120,20 +299,25 @@ class PegasusAdminApp:
 
         self.search_entry = ttk.Entry(right_header, width=30)
         self.search_entry.pack(side="right")
-        self.search_entry.bind("<KeyRelease>", self.on_search) 
+        self.search_entry.bind("<KeyRelease>", self.on_search)
         ttk.Label(right_header, text="🔍 Поиск:").pack(side="right", padx=(0, 5))
 
-        # Настраиваем таблицу
-        columns = ("id", "name", "category", "price")
-        self.tree = ttk.Treeview(right_frame, columns=columns, show="headings", selectmode="browse")
+        # Строка состояния (загрузка / ошибки Supabase)
+        self.status_label = ttk.Label(right_frame, text="")
+        self.status_label.pack(side="bottom", anchor="w", pady=(8, 0))
+
+        # Настраиваем таблицу (с деревом для группировки по категориям)
+        columns = ("id", "name", "price")
+        self.tree = ttk.Treeview(right_frame, columns=columns, show="tree headings", selectmode="browse")
+        # tree-колонка — иконка разворачивания/сворачивания + название категории
+        self.tree.heading("#0", text="Товар / Категория")
+        self.tree.column("#0", width=280)
         self.tree.heading("id", text="ID")
         self.tree.heading("name", text="Название")
-        self.tree.heading("category", text="Категория")
         self.tree.heading("price", text="Цена")
 
         self.tree.column("id", width=50, anchor="center")
-        self.tree.column("name", width=300)
-        self.tree.column("category", width=150)
+        self.tree.column("name", width=200)
         self.tree.column("price", width=80, anchor="e")
 
         scrollbar = ttk.Scrollbar(right_frame, orient="vertical", command=self.tree.yview)
@@ -143,32 +327,71 @@ class PegasusAdminApp:
 
         self.tree.bind("<<TreeviewSelect>>", self.on_item_select)
 
+    def set_status(self, text, error=False):
+        self.status_label.config(
+            text=text,
+            foreground="#b3261e" if error else "#1e7d32",
+        )
+
     def on_search(self, event):
         self.update_tree()
 
     def load_products(self):
         self.products_data = []
-        if os.path.exists(JSON_FILE):
-            try:
-                with open(JSON_FILE, 'r', encoding='utf-8') as f:
-                    self.products_data = json.load(f)
-            except Exception:
-                pass
+        try:
+            self.products_data = fetch_products(self.config)
+            self.set_status(f"Supabase: загружено товаров — {len(self.products_data)}")
+        except requests.RequestException as e:
+            self.set_status("Ошибка подключения к Supabase", error=True)
+            messagebox.showerror(
+                "Ошибка загрузки",
+                f"Не удалось получить товары из Supabase:\n{e}",
+            )
         self.update_tree()
 
     def update_tree(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
-            
+
         query = self.search_entry.get().lower().strip()
 
+        # Фильтруем товары по поисковому запросу
+        filtered = []
         for p in self.products_data:
             name_match = query in p.get("name", "").lower()
             cat_match = query in p.get("category", "").lower()
+            sub_match = query in p.get("subcategory", "").lower()
             id_match = query == str(p.get("id"))
+            if not query or name_match or cat_match or sub_match or id_match:
+                filtered.append(p)
 
-            if not query or name_match or cat_match or id_match:
-                self.tree.insert("", "end", values=(p.get("id"), p.get("name"), p.get("category"), f"{p.get('price')} ₽"))
+        # Группируем по категориям (1C-стиль)
+        categories = {}
+        for p in filtered:
+            cat = p.get("category", "Без категории")
+            categories.setdefault(cat, []).append(p)
+
+        # Сортируем категории по алфавиту
+        for cat in sorted(categories.keys()):
+            products = categories[cat]
+            # Вставляем родительский узел-категорию
+            cat_id = self.tree.insert(
+                "", "end",
+                text=f"\U0001f4c1 {cat}  ({len(products)})",
+                open=True,
+                values=("", "", "")
+            )
+            # Вставляем товары как дочерние узлы
+            for p in products:
+                self.tree.insert(
+                    cat_id, "end",
+                    text=f"  {p.get('name', '')}",
+                    values=(
+                        p.get("id"),
+                        p.get("subcategory", ""),
+                        f"{p.get('price', 0)} ₽"
+                    )
+                )
 
     def choose_image(self):
         file_path = filedialog.askopenfilename(
@@ -177,17 +400,24 @@ class PegasusAdminApp:
         )
         if file_path:
             self.selected_image_path = file_path
-            self.img_label.config(text=f"Выбрано: {os.path.basename(file_path)}", foreground="green")
+            self.img_label.config(text=f"Выбрано: {os.path.basename(file_path)} (загрузится в Supabase)", foreground="green")
 
     def on_item_select(self, event):
         selected = self.tree.selection()
         if not selected:
             return
-        
-        item_values = self.tree.item(selected[0], "values")
+
+        item = selected[0]
+        parent = self.tree.parent(item)
+
+        # Если выбран родительский узел (категория) — ничего не делаем
+        if not parent:
+            return
+
+        item_values = self.tree.item(item, "values")
         # ID хранится как строка: в базе могут быть и числа, и строки.
         product_id = str(item_values[0])
-        
+
         # Умное сравнение — строка к строке, чтобы строковые ID не ломались
         product = next((p for p in self.products_data if str(p.get("id")) == product_id), None)
         if not product:
@@ -195,17 +425,17 @@ class PegasusAdminApp:
 
         self.editing_id = product_id
         self.form_title.config(text=f"✏️ Редактирование товара ID: {product_id}", foreground="blue")
-        
+
         # Заполняем поля
         self.name_entry.delete(0, tk.END)
         self.name_entry.insert(0, product.get("name", ""))
-        
+
         self.price_entry.delete(0, tk.END)
         self.price_entry.insert(0, str(product.get("price", "")))
-        
+
         self.category_entry.delete(0, tk.END)
         self.category_entry.insert(0, product.get("category", ""))
-        
+
         self.subcategory_entry.delete(0, tk.END)
         self.subcategory_entry.insert(0, product.get("subcategory", ""))
 
@@ -217,7 +447,9 @@ class PegasusAdminApp:
         self.desc_text.insert("1.0", product.get("description", ""))
         self.is_new_var.set(bool(product.get("isNew")))
         self.is_best_var.set(bool(product.get("isBestseller")))
-        
+        # По умолчанию товар в наличии; колонки может не быть у старых записей.
+        self.in_stock_var.set(bool(product.get("inStock", True)))
+
         # Загружаем в форму именно `specs`: это полная таблица характеристик
         # на карточке товара. `filters` — подмножество для сайдбара каталога.
         # Раньше поле читало только `filters`, поэтому правка товара
@@ -226,10 +458,13 @@ class PegasusAdminApp:
         specs = product.get("specs") or product.get("filters") or {}
         for key, val in specs.items():
             self.specs_text.insert(tk.END, f"{key}: {val}\n")
-            
+
         self.selected_image_path = None
         current_image = product.get("images", [""])[0] if product.get("images") else ""
-        self.img_label.config(text=f"Текущее фото: {os.path.basename(current_image)} (оставьте, чтобы не менять)", foreground="gray")
+        self.img_label.config(
+            text=f"Текущее фото: {os.path.basename(current_image)} (оставьте, чтобы не менять)",
+            foreground="gray",
+        )
 
     def reset_form(self):
         self.editing_id = None
@@ -242,10 +477,11 @@ class PegasusAdminApp:
         self.desc_text.delete("1.0", tk.END)
         self.is_new_var.set(False)
         self.is_best_var.set(False)
+        self.in_stock_var.set(True)
         self.specs_text.delete("1.0", tk.END)
         self.selected_image_path = None
         self.img_label.config(text="Файл не выбран", foreground="gray")
-        
+
         for item in self.tree.selection():
             self.tree.selection_remove(item)
 
@@ -253,13 +489,29 @@ class PegasusAdminApp:
         if not self.editing_id:
             messagebox.showwarning("Внимание", "Сначала выберите товар в таблице справа для удаления.")
             return
-            
-        if messagebox.askyesno("Подтверждение", f"Вы точно хотите удалить этот товар из базы?"):
-            # Сравнение строкой к строке: строковые ID (например, "4") раньше
-            # никогда не совпадали с числом и удаление молча не срабатывало.
-            self.products_data = [p for p in self.products_data if str(p.get("id")) != str(self.editing_id)]
-            self.save_to_file()
-            self.update_tree()
+
+        product = next(
+            (p for p in self.products_data if str(p.get("id")) == str(self.editing_id)),
+            None,
+        )
+        if not product:
+            return
+
+        if messagebox.askyesno("Подтверждение", "Вы точно хотите удалить этот товар из базы?"):
+            try:
+                delete_product_row(self.config, self.editing_id)
+            except requests.RequestException as e:
+                messagebox.showerror("Ошибка удаления", f"Supabase: {e}")
+                return
+
+            # Best effort: убираем фото товара из Storage (если оно там лежит)
+            for image_url in product.get("images") or []:
+                try:
+                    delete_image(self.config, image_url)
+                except requests.RequestException:
+                    pass
+
+            self.load_products()
             self.reset_form()
             messagebox.showinfo("Успех", "Товар успешно удален!")
 
@@ -272,6 +524,7 @@ class PegasusAdminApp:
         description = self.desc_text.get("1.0", tk.END).strip()
         is_new = bool(self.is_new_var.get())
         is_best = bool(self.is_best_var.get())
+        is_in_stock = bool(self.in_stock_var.get())
         specs_raw = self.specs_text.get("1.0", tk.END).strip()
 
         if not name or not price_str or not category:
@@ -283,7 +536,7 @@ class PegasusAdminApp:
         except ValueError:
             messagebox.showerror("Ошибка", "Цена должна быть числом!")
             return
-        
+
         if not self.editing_id and not self.selected_image_path:
             messagebox.showerror("Ошибка", "Для нового товара обязательно выберите фото!")
             return
@@ -295,90 +548,86 @@ class PegasusAdminApp:
                     key, val = line.split(':', 1)
                     filters_dict[key.strip()] = val.strip()
 
-        safe_category_folder = slugify(category)
-        target_dir = os.path.join(IMAGES_DIR, safe_category_folder)
-        os.makedirs(target_dir, exist_ok=True)
-
-        json_image_path = None
-        
-        if self.selected_image_path:
-            filename = os.path.basename(self.selected_image_path)
-            stem, ext = os.path.splitext(filename)
-            safe_filename = f"{slugify(stem)}{ext.lower()}"
-            destination_path = os.path.join(target_dir, safe_filename)
-            try:
-                # Если пути не совпадают, копируем
-                if os.path.abspath(self.selected_image_path) != os.path.abspath(destination_path):
-                    shutil.copy2(self.selected_image_path, destination_path)
-                json_image_path = f"{IMAGES_REL}/{safe_category_folder}/{safe_filename}"
-            except shutil.SameFileError:
-                # Если файл уже лежит в нужной папке проекта, просто запоминаем путь
-                json_image_path = f"{IMAGES_REL}/{safe_category_folder}/{safe_filename}"
-            except Exception as e:
-                messagebox.showerror("Ошибка", f"Не удалось скопировать файл: {e}")
-                return
-        
+        old_images = []
         if self.editing_id:
-            # РЕДАКТИРОВАНИЕ
-            product = next((p for p in self.products_data if str(p.get("id")) == str(self.editing_id)), None)
-            if product:
-                product["name"] = name
-                product["price"] = price
-                product["category"] = category
-                product["subcategory"] = subcategory
-                product["avitoLink"] = avito_url # Сохраняем ссылку в базу
-                product["description"] = description
-                product["isNew"] = is_new
-                product["isBestseller"] = is_best
-                # filters — подмножество характеристик для сайдбара каталога.
-                # В форме одна таблица «Характеристики»: обновляем оба поля,
-                # но НЕ трогаем `specs`, если товар был создан без него.
-                product["filters"] = filters_dict
-                if 'specs' in product:
-                    product["specs"] = filters_dict
-                if json_image_path:
-                    product["images"] = [json_image_path]
-            msg = f"Товар '{name}' успешно обновлен!"
-        else:
-            # СОЗДАНИЕ НОВОГО
-            new_id = 1
-            if self.products_data:
-                valid_ids = []
-                for p in self.products_data:
-                    try:
-                        valid_ids.append(int(p.get('id', 0)))
-                    except (ValueError, TypeError):
-                        pass
-                if valid_ids:
-                    new_id = max(valid_ids) + 1
+            current = next(
+                (p for p in self.products_data if str(p.get("id")) == str(self.editing_id)),
+                None,
+            )
+            if current:
+                old_images = list(current.get("images") or [])
 
-            new_product = {
-                "id": new_id,
-                "name": name,
-                "price": price,
-                "category": category,
-                "subcategory": subcategory,
-                "description": description,
-                "isNew": is_new,
-                "isBestseller": is_best,
-                "avitoLink": avito_url, # Сохраняем ссылку в базу
-                "images": [json_image_path] if json_image_path else [],
-                "filters": filters_dict,
-                "specs": filters_dict
-            }
-            self.products_data.append(new_product)
-            msg = f"Товар '{name}' успешно добавлен!"
+        # Новое фото → загружаем в Supabase Storage, получаем публичный URL
+        new_image_url = None
+        if self.selected_image_path:
+            try:
+                new_image_url = upload_image(self.config, self.selected_image_path, category)
+            except (requests.RequestException, OSError) as e:
+                messagebox.showerror("Ошибка", f"Не удалось загрузить фото в Supabase Storage:\n{e}")
+                return
 
-        self.save_to_file()
-        self.update_tree()
+        # Поля пишем в колонки таблицы (snake_case). filters и specs — это
+        # одна и та же таблица «Характеристики» из формы: обе обновляются.
+        payload = {
+            "name": name,
+            "price": price,
+            "category": category,
+            "subcategory": subcategory,
+            "description": description,
+            "is_new": is_new,
+            "is_bestseller": is_best,
+            "in_stock": is_in_stock,
+            "avito_link": avito_url,
+            "filters": filters_dict,
+            "specs": filters_dict,
+        }
+        if new_image_url:
+            payload["images"] = [new_image_url]
+
+        try:
+            if self.editing_id:
+                update_product(self.config, self.editing_id, payload)
+                msg = f"Товар '{name}' успешно обновлен!"
+            else:
+                insert_product(self.config, payload)
+                msg = f"Товар '{name}' успешно добавлен!"
+        except requests.RequestException as e:
+            messagebox.showerror("Ошибка сохранения", f"Supabase: {e}")
+            return
+
+        # Только после успешной записи в БД удаляем старую фотографию
+        if new_image_url:
+            for image_url in old_images:
+                try:
+                    delete_image(self.config, image_url)
+                except requests.RequestException:
+                    pass
+
+        self.load_products()
         self.reset_form()
         messagebox.showinfo("Успех", msg)
 
-    def save_to_file(self):
-        with open(JSON_FILE, 'w', encoding='utf-8') as f:
-            json.dump(self.products_data, f, ensure_ascii=False, indent=4)
+
+def main():
+    config = load_config()
+    root = tk.Tk()
+
+    if not config['url'] or not config['service_key']:
+        root.withdraw()
+        messagebox.showerror(
+            "Supabase не настроен",
+            "Добавьте в файл .env рядом с manager.py:\n\n"
+            "  VITE_SUPABASE_URL=https://<project>.supabase.co\n"
+            "  SUPABASE_SERVICE_KEY=<service_role ключ из Settings → API>\n\n"
+            "service_role-ключ нужен для записи в таблицу и загрузки фото. "
+            "Не публикуйте его и не используйте в коде витрины.",
+        )
+        root.destroy()
+        return
+
+    app = PegasusAdminApp(root, config)
+    root.mainloop()
+
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = PegasusAdminApp(root)
-    root.mainloop()
+    main()

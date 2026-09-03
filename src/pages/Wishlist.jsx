@@ -3,13 +3,14 @@ import { Trash2 } from 'lucide-react';
 import { useWishlist } from '../lib/wishlist.jsx';
 import { useStore } from '../lib/store.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
+import { StoreError } from '../components/StoreError.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
 import { Breadcrumbs } from '../components/Breadcrumbs.jsx';
 import { useMeta } from '../hooks/useMeta.js';
 import { pluralGoods } from '../lib/utils.js';
 
 export function Wishlist() {
-  const { products } = useStore();
+  const { products, error } = useStore();
   const { ids, clear } = useWishlist();
 
   useMeta({
@@ -49,7 +50,9 @@ export function Wishlist() {
         )}
       </header>
 
-      {products === null ? (
+      {error ? (
+        <StoreError error={error} />
+      ) : products === null ? (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(min(240px,100%),1fr))] gap-6 gap-y-8">
           {Array.from({ length: 3 }, (_, i) => (
             <div key={i} className="skeleton aspect-[3/4] rounded" />

@@ -24,11 +24,14 @@ export function ProductCard({ product, eager = false }) {
     push(added ? 'Добавлено в избранное' : 'Удалено из избранного');
   };
 
-  const badge = product.isNew
-    ? <span className="absolute top-3 left-3 z-[2] px-3 py-1 bg-gold text-white text-[10px] uppercase tracking-[0.16em]">Новинка</span>
-    : product.isBestseller
-      ? <span className="absolute top-3 left-3 z-[2] px-3 py-1 bg-ink text-white text-[10px] uppercase tracking-[0.16em]">Хит</span>
-      : null;
+  const soldOut = product.inStock === false;
+  const badge = soldOut
+    ? <span className="absolute top-3 left-3 z-[2] px-3 py-1 bg-muted text-white text-[10px] uppercase tracking-[0.16em]">Продано</span>
+    : product.isNew
+      ? <span className="absolute top-3 left-3 z-[2] px-3 py-1 bg-gold text-white text-[10px] uppercase tracking-[0.16em]">Новинка</span>
+      : product.isBestseller
+        ? <span className="absolute top-3 left-3 z-[2] px-3 py-1 bg-ink text-white text-[10px] uppercase tracking-[0.16em]">Хит</span>
+        : null;
 
   return (
     <Reveal as="article" className="card group">
@@ -50,7 +53,7 @@ export function ProductCard({ product, eager = false }) {
         to={href}
         tabIndex={-1}
         aria-hidden="true"
-        className="block aspect-square overflow-hidden bg-white"
+        className={`block aspect-square overflow-hidden bg-white ${soldOut ? 'opacity-60' : ''}`}
       >
         {main ? (
           <>
