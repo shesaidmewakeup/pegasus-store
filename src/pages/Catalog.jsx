@@ -212,7 +212,7 @@ export function Catalog() {
               if (facets.length === 0) return null;
               const selected = specFilters.get(name) ?? new Set();
               return (
-                <details key={name} className="group border-b border-line py-1" open>
+                <details key={name} className="group border-b border-line py-1">
                   <summary className="flex cursor-pointer select-none list-none items-center justify-between gap-2 py-2 text-xs uppercase tracking-[0.16em] text-muted transition-colors duration-150 hover:text-gold [&::-webkit-details-marker]:hidden">
                     {name}
                     <ChevronDown
