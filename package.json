@@ -6,7 +6,7 @@
   "description": "Витрина премиальных гаджетов и аксессуаров. React + Vite + Tailwind CSS + lucide-react.",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/postbuild.mjs",
+    "build": "vite build && node --env-file-if-exists=.env scripts/postbuild.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

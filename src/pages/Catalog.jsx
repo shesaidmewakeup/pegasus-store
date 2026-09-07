@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { ChevronDown, SlidersHorizontal, X } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { SkeletonGrid } from '../components/Skeletons.jsx';
 import { StoreError } from '../components/StoreError.jsx';
@@ -75,13 +75,20 @@ export function Catalog() {
     [products],
   );
 
-  /** Имена характеристик, по которым есть фильтры (для сайдбара). */
+  /** Товары активной категории — база для фасетов характеристик. */
+  const categoryProducts = useMemo(() => {
+    if (!products) return null;
+    return category ? products.filter((p) => p.category === category) : products;
+  }, [products, category]);
+
+  /** Имена характеристик — только из товаров активной категории.
+   *  Без выбранной категории характеристик не показываем вовсе. */
   const facetNames = useMemo(() => {
-    if (!products) return [];
+    if (!products || !category) return [];
     const names = new Set();
-    products.forEach((p) => Object.keys(p.specs ?? {}).forEach((k) => names.add(k)));
+    categoryProducts.forEach((p) => Object.keys(p.specs ?? {}).forEach((k) => names.add(k)));
     return [...names];
-  }, [products]);
+  }, [products, category, categoryProducts]);
 
   const filtered = useMemo(() => {
     if (!products) return null;
@@ -118,7 +125,7 @@ export function Catalog() {
     const chips = [];
     if (category) chips.push({ key: 'category', label: category });
     specFilters.forEach((values, name) => {
-      values.forEach((v) => chips.push({ key: `${name}::${v}`, name, value: v }));
+      values.forEach((v) => chips.push({ key: `${name}::${v}`, name, value: v, label: v }));
     });
     return chips;
   }, [category, specFilters]);
@@ -197,29 +204,48 @@ export function Catalog() {
         </div>
       </fieldset>
 
-      {facetNames.map((name) => {
-        const facets = specFacet(products ?? [], name);
-        if (facets.length === 0) return null;
-        const selected = specFilters.get(name) ?? new Set();
-        return (
-          <fieldset key={name}>
-            <legend className="mb-3 text-xs uppercase tracking-[0.16em] text-muted">{name}</legend>
-            <div className="grid gap-1">
-              {facets.map(([value, count]) => (
-                <label key={value} className="filter-check">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(value)}
-                    onChange={() => toggleSpec(name, value)}
-                  />
-                  <span className="flex-1">{value}</span>
-                  <span className="filter-btn__count">{count}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        );
-      })}
+      {category ? (
+        facetNames.length > 0 ? (
+          <div className="grid">
+            {facetNames.map((name) => {
+              const facets = specFacet(categoryProducts ?? [], name);
+              if (facets.length === 0) return null;
+              const selected = specFilters.get(name) ?? new Set();
+              return (
+                <details key={name} className="group border-b border-line py-1" open>
+                  <summary className="flex cursor-pointer select-none list-none items-center justify-between gap-2 py-2 text-xs uppercase tracking-[0.16em] text-muted transition-colors duration-150 hover:text-gold [&::-webkit-details-marker]:hidden">
+                    {name}
+                    <ChevronDown
+                      size={16}
+                      aria-hidden="true"
+                      className="shrink-0 text-muted transition-transform duration-200 group-[[open]]:rotate-180"
+                    />
+                  </summary>
+                  <div className="grid gap-1 pb-2 pt-1">
+                    {facets.map(([value, count]) => (
+                      <label key={value} className="filter-check">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(value)}
+                          onChange={() => toggleSpec(name, value)}
+                        />
+                        <span className="flex-1">{value}</span>
+                        <span className="filter-btn__count">{count}</span>
+                      </label>
+                    ))}
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-xs text-muted">В этой категории нет характеристик для фильтрации.</p>
+        )
+      ) : (
+        <p className="text-xs text-muted">
+          Выберите категорию — появятся фильтры по характеристикам.
+        </p>
+      )}
     </div>
   );
 
