@@ -6,7 +6,7 @@ import { SkeletonGrid } from '../components/Skeletons.jsx';
 import { StoreError } from '../components/StoreError.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
 import { Breadcrumbs } from '../components/Breadcrumbs.jsx';
-import { useStore, getCategories, getCategoryCounts } from '../lib/store.jsx';
+import { useStore, getCategories, getCategoryCounts, isAvitoAvailable } from '../lib/store.jsx';
 import { useMeta } from '../hooks/useMeta.js';
 import { pluralGoods, normalizeId } from '../lib/utils.js';
 
@@ -105,17 +105,22 @@ export function Catalog() {
       });
     }
 
+    /** Распроданные и товары без ссылки на Авито — всегда в конце,
+     *  внутри групп — выбранная сортировка. Логика повторяет BuyButton. */
+    const soldOutRank = (p) => (isAvitoAvailable(p) && p.inStock !== false ? 0 : 1);
+
     switch (sort) {
       case 'price-asc':
-        list = [...list].sort((a, b) => a.price - b.price);
+        list = [...list].sort((a, b) => soldOutRank(a) - soldOutRank(b) || a.price - b.price);
         break;
       case 'price-desc':
-        list = [...list].sort((a, b) => b.price - a.price);
+        list = [...list].sort((a, b) => soldOutRank(a) - soldOutRank(b) || b.price - a.price);
         break;
       case 'new':
-        list = [...list].sort((a, b) => Number(b.isNew) - Number(a.isNew));
+        list = [...list].sort((a, b) => soldOutRank(a) - soldOutRank(b) || Number(b.isNew) - Number(a.isNew));
         break;
       default:
+        list = [...list].sort((a, b) => soldOutRank(a) - soldOutRank(b));
         break;
     }
     return list;
